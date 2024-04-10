@@ -184,8 +184,12 @@ namespace ControlApplication
                     serialOutput.Text += "Moving motor by " + motorStepLength + " mm\n";
                 });
 
+                //Convert motor step length to number of steps for a motor
+                //TODO: Do proper conversion
+                int motorSteps = (int)(Double.Parse(motorStepLength) * 1000);
+
                 //Move motor
-                SerialCommandResponse motorResponse = executeCommandOverSerial("motor move " + motorStepLength);
+                SerialCommandResponse motorResponse = executeCommandOverSerial("motor move " + motorSteps);
                 //MessageBox.Show("Command: " + motorResponse.command + "\nSuccess: " + motorResponse.success + "\nData: " + motorResponse.data);
 
                 serialOutput.Invoke((MethodInvoker)delegate
