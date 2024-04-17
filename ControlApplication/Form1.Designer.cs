@@ -36,7 +36,6 @@
             this.serialOutput = new System.Windows.Forms.RichTextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
-            this.button1 = new System.Windows.Forms.Button();
             this.stepButton = new System.Windows.Forms.Button();
             this.voltageProbeDropdown = new System.Windows.Forms.ComboBox();
             this.label3 = new System.Windows.Forms.Label();
@@ -46,6 +45,9 @@
             this.motorPositionLabel = new System.Windows.Forms.Label();
             this.stepStatusLabel = new System.Windows.Forms.Label();
             this.stepStatusStaticLabel = new System.Windows.Forms.Label();
+            this.commandInput = new System.Windows.Forms.TextBox();
+            this.runButton = new System.Windows.Forms.Button();
+            this.executeButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.motorStartPositionInput)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.motorStepLengthInput)).BeginInit();
             this.SuspendLayout();
@@ -122,15 +124,6 @@
             this.label2.Size = new System.Drawing.Size(76, 13);
             this.label2.TabIndex = 9;
             this.label2.Text = "Voltage probe:";
-            // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(713, 14);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 10;
-            this.button1.Text = "Run";
-            this.button1.UseVisualStyleBackColor = true;
             // 
             // stepButton
             // 
@@ -223,11 +216,41 @@
             this.stepStatusStaticLabel.TabIndex = 21;
             this.stepStatusStaticLabel.Text = "Status:";
             // 
+            // commandInput
+            // 
+            this.commandInput.Location = new System.Drawing.Point(541, 111);
+            this.commandInput.Name = "commandInput";
+            this.commandInput.Size = new System.Drawing.Size(247, 20);
+            this.commandInput.TabIndex = 23;
+            this.commandInput.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.commandInput_KeyPress);
+            // 
+            // runButton
+            // 
+            this.runButton.Location = new System.Drawing.Point(713, 14);
+            this.runButton.Name = "runButton";
+            this.runButton.Size = new System.Drawing.Size(75, 23);
+            this.runButton.TabIndex = 10;
+            this.runButton.Text = "Run";
+            this.runButton.UseVisualStyleBackColor = true;
+            this.runButton.Click += new System.EventHandler(this.runButton_Click);
+            // 
+            // executeButton
+            // 
+            this.executeButton.Location = new System.Drawing.Point(713, 137);
+            this.executeButton.Name = "executeButton";
+            this.executeButton.Size = new System.Drawing.Size(75, 23);
+            this.executeButton.TabIndex = 24;
+            this.executeButton.Text = "Execute";
+            this.executeButton.UseVisualStyleBackColor = true;
+            this.executeButton.Click += new System.EventHandler(this.executeButton_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 626);
+            this.Controls.Add(this.executeButton);
+            this.Controls.Add(this.commandInput);
             this.Controls.Add(this.stepStatusLabel);
             this.Controls.Add(this.stepStatusStaticLabel);
             this.Controls.Add(this.motorPositionLabel);
@@ -237,7 +260,7 @@
             this.Controls.Add(this.label3);
             this.Controls.Add(this.voltageProbeDropdown);
             this.Controls.Add(this.stepButton);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.runButton);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.serialOutput);
@@ -266,7 +289,6 @@
         private System.Windows.Forms.RichTextBox serialOutput;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Button stepButton;
         private System.Windows.Forms.ComboBox voltageProbeDropdown;
         private System.Windows.Forms.Label label3;
@@ -276,6 +298,9 @@
         private System.Windows.Forms.Label motorPositionLabel;
         private System.Windows.Forms.Label stepStatusLabel;
         private System.Windows.Forms.Label stepStatusStaticLabel;
+        private System.Windows.Forms.TextBox commandInput;
+        private System.Windows.Forms.Button runButton;
+        private System.Windows.Forms.Button executeButton;
     }
 }
 

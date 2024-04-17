@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Ports;
@@ -53,6 +54,8 @@ namespace ControlApplication
         private MotorStatus motorStatus = MotorStatus.HAS_NOT_MOVED;
         int motorPosition = 0; //micrometers
 
+        int motorStepLengthToStepsConversion = 695; //steps to move 1mm
+
         string outputFilePath = @".\Output.csv";
 
         public Form1()
@@ -68,6 +71,67 @@ namespace ControlApplication
                 }
             }
 
+        }
+
+        private void step(int numberOfSteps = 1)
+        {
+            motorStatus = MotorStatus.HAS_MOVED;
+            motorStartPositionInput.Enabled = false;
+            motorStepLengthInput.Enabled = false;
+            stepButton.Enabled = false;
+
+            //Execute command on a different thread to avoid blocking the UI
+            string motorStepLength = motorStepLengthInput.Text;
+            string voltageProbe = voltageProbeDropdown.SelectedValue.ToString();
+            ThreadPool.QueueUserWorkItem(o =>
+            {
+                for (int i = 0; i < numberOfSteps; i++)
+                {
+                    //Measure voltage
+                    serialOutput.Invoke((MethodInvoker)delegate
+                    {
+                        serialOutput.Text += "Reading voltage from probe " + voltageProbe + "\n";
+                    });
+                    SerialCommandResponse voltageResponse = executeCommandOverSerial("voltage get " + voltageProbe);
+
+                    using (StreamWriter sw = File.AppendText(outputFilePath))
+                    {
+                        sw.WriteLine(motorPosition + "," + voltageResponse.data);
+                    }
+                    //Move motor
+
+                    //Convert motor step length to number of steps for a motor
+                    //TODO: Do proper conversion
+                    int motorSteps = (int)(Double.Parse(motorStepLength) * motorStepLengthToStepsConversion);
+
+                    serialOutput.Invoke((MethodInvoker)delegate
+                    {
+                        serialOutput.Text += "Moving motor by " + motorStepLength + " mm (" + motorSteps + " steps)\n";
+                    });
+
+                    SerialCommandResponse motorResponse = executeCommandOverSerial("motor move " + motorSteps);
+
+                    //Update motor position
+                    if (motorResponse.success)
+                    {
+                        motorPosition = motorPosition + (int)(Double.Parse(motorStepLengthInput.Text) * 1000);
+                        motorPositionLabel.Invoke((MethodInvoker)delegate
+                        {
+                            motorPositionLabel.Text = ((double)motorPosition / 1000) + " mm";
+                        });
+                    } else
+                    {
+                        MessageBox.Show("Error: Motor did not move");
+                    }
+                }
+
+                //Set step button to Enabled again
+                stepButton.Invoke((MethodInvoker)delegate
+                {
+                    stepButton.Enabled = true;
+                    stepButton.Focus();
+                });
+            });
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -87,8 +151,7 @@ namespace ControlApplication
                 connectButton.Enabled = false;
                 statusLabel.ForeColor = Color.Red;
                 statusLabel.Text = "No COM ports available";
-            }
-            else
+            } else
             {
                 comPortDropdown.DataSource = new BindingSource(portList, null);
                 comPortDropdown.SelectedIndex = 0;
@@ -99,8 +162,12 @@ namespace ControlApplication
             baudDropdown.DataSource = new BindingSource(baudList, null);
 
             //Populate the voltage proble dropdown
-            List<int> voltageProbeList = new List<int> {1, 2};
+            List<int> voltageProbeList = new List<int> { 1, 2 };
             voltageProbeDropdown.DataSource = new BindingSource(voltageProbeList, null);
+
+            //Set default value for motor config
+            motorStepLengthInput.Value = (decimal)0.2;
+            motorStartPositionInput.Value = (decimal)10;
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -110,7 +177,7 @@ namespace ControlApplication
 
         private void connectButton_Click(object sender, EventArgs e)
         {
-            if(connectionState == ConnectionState.DISCONNECTED)
+            if (connectionState == ConnectionState.DISCONNECTED)
             {
                 //Display that connection is being established
                 connectButton.Enabled = false;
@@ -136,8 +203,7 @@ namespace ControlApplication
                     //Set _continue to true, so that the serial port process can run
                     _continue = true;
                     ThreadPool.QueueUserWorkItem(o => mainSerial());
-                }
-                catch (Exception ex)
+                } catch (Exception ex)
                 {
                     MessageBox.Show("Error: " + ex.Message);
                     statusLabel.Text = "Error: " + ex.Message;
@@ -146,7 +212,7 @@ namespace ControlApplication
                     return;
                 }
 
-            } else if(connectionState == ConnectionState.CONNECTED)
+            } else if (connectionState == ConnectionState.CONNECTED)
             {
                 //Set _continue to false, so that the serial port process can stop
                 _continue = false;
@@ -164,82 +230,28 @@ namespace ControlApplication
                 connectButton.Enabled = true;
                 statusLabel.Text = "Disconnected";
                 connectionState = ConnectionState.DISCONNECTED;
-                connectButton.Text = "Connect";   
+                connectButton.Text = "Connect";
             }
         }
 
         private void stepButton_Click(object sender, EventArgs e)
         {
-            motorStatus = MotorStatus.HAS_MOVED;
-            motorStartPositionInput.Enabled = false;
-            motorStepLengthInput.Enabled = false;
-            stepButton.Enabled = false;
-
-            //Execute command on a different thread to avoid blocking the UI
-            string motorStepLength = motorStepLengthInput.Text;
-            string voltageProbe = voltageProbeDropdown.SelectedValue.ToString();
-            ThreadPool.QueueUserWorkItem(o => {
-                serialOutput.Invoke((MethodInvoker)delegate
-                {
-                    serialOutput.Text += "Moving motor by " + motorStepLength + " mm\n";
-                });
-
-                //Convert motor step length to number of steps for a motor
-                //TODO: Do proper conversion
-                int motorSteps = (int)(Double.Parse(motorStepLength) * 1000);
-
-                //Move motor
-                SerialCommandResponse motorResponse = executeCommandOverSerial("motor move " + motorSteps);
-                //MessageBox.Show("Command: " + motorResponse.command + "\nSuccess: " + motorResponse.success + "\nData: " + motorResponse.data);
-
-                serialOutput.Invoke((MethodInvoker)delegate
-                {
-                    serialOutput.Text += "Reading voltage from probe " + voltageProbe + "\n";
-                });
-                //Measure voltage
-                SerialCommandResponse voltageResponse = executeCommandOverSerial("voltage get " + voltageProbe);
-                //MessageBox.Show("Command: " + voltageResponse.command + "\nSuccess: " + voltageResponse.success + "\nData: " + voltageResponse.data);
-
-                //Set step button to Enabled again
-                stepButton.Invoke((MethodInvoker)delegate
-                {
-                    stepButton.Enabled = true;
-                    stepButton.Focus();
-                });
-
-                //Update motor position
-                if (motorResponse.success)
-                {
-                    motorPosition = motorPosition + (int)(Double.Parse(motorStepLengthInput.Text) * 1000);
-                    motorPositionLabel.Invoke((MethodInvoker)delegate
-                    {
-                        motorPositionLabel.Text = ((double)motorPosition / 1000) + " mm";
-                    });
-
-                    using (StreamWriter sw = File.AppendText(outputFilePath))
-                    {
-                        sw.WriteLine(motorPosition + "," + voltageResponse.data);
-                    }
-                } else
-                {
-                    MessageBox.Show("Error: Motor did not move");
-                }
-            });
+            step();
         }
 
         private void motorStartPositionInput_ValueChanged(object sender, EventArgs e)
         {
-            if(motorStatus == MotorStatus.HAS_NOT_MOVED)
+            if (motorStatus == MotorStatus.HAS_NOT_MOVED)
             {
                 motorPosition = (int)(motorStartPositionInput.Value * 1000);
-                motorPositionLabel.Text = ((double)motorPosition/1000) + " mm";
+                motorPositionLabel.Text = ((double)motorPosition / 1000) + " mm";
             }
         }
 
         private SerialCommandResponse executeCommandOverSerial(string command)
         {
             int numberOfDots = 0;
-            if(executionStatus != ExecutionStatus.IDLE)
+            if (executionStatus != ExecutionStatus.IDLE)
             {
                 stepStatusLabel.Invoke((MethodInvoker)delegate
                 {
@@ -247,7 +259,7 @@ namespace ControlApplication
                 });
             }
 
-            while(executionStatus != ExecutionStatus.IDLE)
+            while (executionStatus != ExecutionStatus.IDLE)
             {
                 stepStatusLabel.Invoke((MethodInvoker)delegate
                 {
@@ -305,16 +317,16 @@ namespace ControlApplication
                                 serialOutput.Text += message + "\n";
                             });
 
-                            if(executionStatus == ExecutionStatus.EXECUTING)
+                            if (executionStatus == ExecutionStatus.EXECUTING)
                             {
-                                if(message.Contains("Success: "))
+                                if (message.Contains("Success: "))
                                 {
                                     responseState = 1;
                                     string success = message.Substring(9, 1);
                                     globalCommandResponse.success = success == "1";
-                                } else if(message.Contains("Data: "))
+                                } else if (message.Contains("Data: "))
                                 {
-                                    if(responseState == 1)
+                                    if (responseState == 1)
                                     {
                                         globalCommandResponse.data = message.Replace("Data: ", "").Trim();
                                         executionStatus = ExecutionStatus.RESPONSE_RECEIVED;
@@ -331,7 +343,7 @@ namespace ControlApplication
                 } catch (Exception ex)
                 {
                     MessageBox.Show("Error: " + ex.Message);
-                    if(_serialPort.IsOpen)
+                    if (_serialPort.IsOpen)
                     {
                         _serialPort.Close();
                     }
@@ -348,6 +360,48 @@ namespace ControlApplication
                     });
                     break;
                 }
+            }
+        }
+
+        private void runButton_Click(object sender, EventArgs e)
+        {
+            double motorStepLength = Double.Parse(motorStepLengthInput.Text);
+            double lastDistance = 86;
+            int steps = (int)((lastDistance - motorPosition / 1000) / motorStepLength);
+            step(steps);
+        }
+
+        private void executeCommandManually()
+        {
+            executeButton.Enabled = false;
+            string command = commandInput.Text;
+
+            ThreadPool.QueueUserWorkItem(o =>
+            {
+                //Measure voltage
+                serialOutput.Invoke((MethodInvoker)delegate
+                {
+                    serialOutput.Text += "Executing: " + command + "\n";
+                });
+                SerialCommandResponse voltageResponse = executeCommandOverSerial(command);
+
+                executeButton.Invoke((MethodInvoker)delegate
+                {
+                    executeButton.Enabled = true;
+                });
+            });
+        }
+
+        private void executeButton_Click(object sender, EventArgs e)
+        {
+            executeCommandManually();
+        }
+
+        private void commandInput_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if(e.KeyChar == (char)13)
+            {
+                executeCommandManually();
             }
         }
     }
